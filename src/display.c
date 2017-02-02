@@ -32,13 +32,14 @@ static void set_digit(int value) {
 
 static void set_mask() {
     zero_mask = 0b00000000;
-    if (value_to_print > 99) {
-        if (value_to_print > 999)
+    uint16_t value = value_to_print;
+    if (value > 99) {
+        if (value > 999)
             zero_mask = 0b00001111;
         else
             zero_mask = 0b00000111;
     } else {
-        if (value_to_print > 9)
+        if (value > 9)
             zero_mask = 0b00000011;
         else
             zero_mask = 0b00000001;
@@ -64,7 +65,7 @@ void set_digits(uint8_t value[4]) {
     digits[2] = value[2];
     digits[3] = value[3];
     value_to_print = (uint16_t)(digits[0]) + 
-                     (uint16_t)(digits[1]*10) + 
+                     (uint16_t)(digits[1])*10 + 
                      (uint16_t)(digits[2])*100 + 
                      (uint16_t)(digits[3])*1000;
     set_mask();
