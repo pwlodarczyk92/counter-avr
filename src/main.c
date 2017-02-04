@@ -100,11 +100,11 @@ void static inline rot_digit() {
 }
 
 void static inline execute_order_66() {
-    DDRD  |= 0b10000000;
-    PORTD |= 0b10000000;
+    DDRB  |= 0b00000010;
+    PORTB |= 0b00000010;
     _delay_ms(100);
-    PORTD &= ~0b10000000;
-    DDRD  &= ~0b10000000;
+    DDRB  &= ~0b00000010;
+    PORTB &= ~0b00000010;
 }
 
 void static inline swich_power_off() {
