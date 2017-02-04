@@ -14,18 +14,18 @@ static void reset_display() {
 
     current_value = 0;
     PORTC ^= 0b00100000;
-    _delay_us(0.25);
+    _delay_us(1);
     PORTC ^= 0b00100000;
-    _delay_us(0.25);
+    _delay_us(1);
 
 }
 
 static void set_digit(int value) {
     while (current_value != value) {
         PORTC ^= 0b00010000;
-        _delay_us(0.25);
+        _delay_us(1);
         PORTC ^= 0b00010000;
-        _delay_us(0.25);
+        _delay_us(1);
         current_value = (current_value + 1) % 10;
     }
 }
@@ -74,7 +74,7 @@ void set_digits(uint8_t value[4]) {
 
 void setup_display(uint8_t value) {
     DDRC  |= 0b00111111;  //Set PortC Pin0-5 as an output
-    PORTC &= 0b11000000;  //Set PortC Pin0-5 low to turn on LED
+    PORTC &= 0b11000000;  //Set PortC Pin0-5 low to turn off LED
 
     reset_display();
     set_value(value);
