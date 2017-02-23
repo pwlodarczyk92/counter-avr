@@ -1,5 +1,5 @@
 #ifndef F_CPU
-#define F_CPU 1000000UL                          // set the CPU clock
+#error frequency is not set. (eg. -DF_CPU=1000000UL) // set the CPU clock
 #endif
 #define FPS 160
 
@@ -9,6 +9,7 @@
 #include <avr/sleep.h>
 #include <stdio.h> 
 #include "display.h"
+#include "clocks.h"
 
 /* button pins */
 uint8_t last_input = 0b11111111;              // Last input pin state. Reverse logic, 1 = off! 
@@ -17,11 +18,9 @@ static const uint8_t CHANGE_DIGIT = 1 << PD3;
 static const uint8_t INCR_DIGIT   = 1 << PD4;
 
 /* display timer variables */
-volatile uint16_t timer_counter = 0;          // Cyclic counter, one cycle per second.
-volatile uint8_t  current_digit = 0;          // Currently edited digit
-volatile uint8_t  digits[4]     = {0,0,0,0};  // Displayed digits
-volatile uint8_t  is_zero       = 1;          // Cached logic value
-
+volatile uint16_t timer_counter    = 0;          // Cyclic counter, one cycle per second.
+volatile uint8_t  current_digit    = 0;          // Currently edited digit
+    
 /* timer mode variables */
 volatile uint8_t     timer_mode   = 0;
 static const uint8_t SETTING_MODE = 0;
@@ -76,35 +75,12 @@ int main(void)
     };
 }
 
-void static inline update() {
-    uint8_t copy[4] = {digits[0], digits[1], digits[2], digits[3]};
-    is_zero = !(copy[0] | copy[1] | copy[2] | copy[3]);
-    set_digits(copy);
-}
-
-void static inline decrement() {
-    int digit = 0;
-    while (digit < 4 && digits[digit] == 0)
-        digit++;
-    if (digit == 4)
-        return;
-    digits[digit--]--;
-    while(digit>=0)
-        digits[digit--] = 9;
-    update();
-}
-
-void static inline rot_digit() {
-    digits[current_digit] = (digits[current_digit] + 1) % 10;
-    update();
-}
-
 void static inline execute_order_66() {
-    DDRB  |= 0b00000010;
-    PORTB |= 0b00000010;
+    DDRD  |= 0b01000000;
+    PORTD |= 0b01000000;
     _delay_ms(100);
-    DDRB  &= ~0b00000010;
-    PORTB &= ~0b00000010;
+    PORTD &= ~0b01000000;
+    DDRD  &= ~0b01000000;
 }
 
 void static inline swich_power_off() {
@@ -117,7 +93,7 @@ void static inline swich_power_off() {
 
 ISR(TIMER1_COMPA_vect)   //Interrupt Service Routine for timer
 {
-    uint8_t was_zero = is_zero;
+    uint8_t was_zero = is_zero();
     timer_counter = (timer_counter + 1) % FPS;
     uint8_t half_sec = timer_counter*2 == FPS + (FPS%2);
     uint8_t full_sec = timer_counter   == 0;
@@ -130,10 +106,10 @@ ISR(TIMER1_COMPA_vect)   //Interrupt Service Routine for timer
 
     if (timer_mode != SAVING_MODE)
         increment_display();
-    else if (is_zero)
+    else if (is_zero())
         swich_power_off();
 
-    if (is_zero && !was_zero && (timer_mode != SETTING_MODE))
+    if (is_zero() && !was_zero && (timer_mode != SETTING_MODE))
         execute_order_66();
 }
 
