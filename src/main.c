@@ -18,15 +18,11 @@ static const uint8_t CHANGE_DIGIT = 1 << PD3;
 static const uint8_t INCR_DIGIT   = 1 << PD4;
 
 /* display timer variables */
-volatile uint16_t timer_counter    = 0;          // Cyclic counter, one cycle per second.
-volatile uint8_t  current_digit    = 0;          // Currently edited digit
+volatile uint16_t timer_counter = 0;          // Cyclic counter, one cycle per second.
+volatile uint8_t  current_digit = 0;          // Currently edited digit
     
 /* timer mode variables */
-volatile uint8_t     timer_mode   = 0;
-static const uint8_t SETTING_MODE = 0;
-static const uint8_t TIMER_MODE   = 1;
-static const uint8_t SAVING_MODE  = 2;
-
+volatile uint8_t clock_num = 0;
 volatile uint8_t current_sleep_mode = SLEEP_MODE_IDLE;
 
 void static inline setup_clock(int cps) {
@@ -75,42 +71,57 @@ int main(void)
     };
 }
 
-void static inline execute_order_66() {
-    DDRD  |= 0b01000000;
-    PORTD |= 0b01000000;
+void static inline execute_order_66(uint8_t clk) {
+    DDRD  |= 0b00100000 << clk;
+    PORTD |= 0b00100000 << clk;
     _delay_ms(100);
-    PORTD &= ~0b01000000;
-    DDRD  &= ~0b01000000;
+    PORTD &= ~0b00100000 << clk;
+    DDRD  &= ~0b00100000 << clk;
 }
 
 void static inline swich_power_off() {
-    set_custom_mask(0b00000000);
-    enable_custom_mask();
-    increment_display();
     enable_int0();
     current_sleep_mode = SLEEP_MODE_PWR_DOWN;
 }
 
 ISR(TIMER1_COMPA_vect)   //Interrupt Service Routine for timer
 {
-    uint8_t was_zero = is_zero();
+
     timer_counter = (timer_counter + 1) % FPS;
-    uint8_t half_sec = timer_counter*2 == FPS + (FPS%2);
     uint8_t full_sec = timer_counter   == 0;
 
-    if ((full_sec || half_sec) && (timer_mode == SETTING_MODE)) // blink!
-        set_custom_mask(~(half_sec << current_digit));
-    
-    if (full_sec && (timer_mode != SETTING_MODE)) // count
-        decrement();
+    if (clock_num < CLKNUM) {
 
-    if (timer_mode != SAVING_MODE)
+        uint8_t half_sec = timer_counter*2 == FPS + (FPS%2);
+        if (full_sec || half_sec) // blink!
+            set_custom_mask(~(half_sec << current_digit));
         increment_display();
-    else if (is_zero())
-        swich_power_off();
 
-    if (is_zero() && !was_zero && (timer_mode != SETTING_MODE))
-        execute_order_66();
+    } else if (!full_sec) {
+        return;
+    } else {      
+
+        uint8_t any_nonzero = 0;
+        uint8_t clk = 0;
+
+        for(; clk < CLKNUM ; clk++) {
+
+            if (is_zero(clk))
+                continue;
+            decrement(clk);
+            if (!is_zero(clk)) {
+                any_nonzero |= 0b11111111; 
+                continue;
+            }
+            
+            execute_order_66(clk); // was nonzero and became zero
+            timer_counter = 1;     // execute orders one by one
+            return;                // delay sleep
+        }
+
+        if (!any_nonzero)
+            swich_power_off();
+    }
 }
 
 ISR(INT0_vect) {
@@ -126,26 +137,22 @@ ISR(PCINT2_vect)
     last_input = input_now;
     
     if (input_diff & SWITCH_BTN) {   /* PD4 - switch mode*/
-        timer_mode = (timer_mode + 1) % 3;
-        if (timer_mode == SETTING_MODE) {
+        clock_num = (clock_num + 1) % (CLKNUM + 1);
+        if (clock_num < CLKNUM) {
             set_custom_mask(0b11111111);
-            enable_custom_mask();
+            set_clock(clock_num);
             current_digit = 0;
             timer_counter = 1;
-        } else if (timer_mode == TIMER_MODE) {
-            disable_custom_mask();
-            timer_counter = 1;
-        } else if (timer_mode == SAVING_MODE) {
+        } else { /*if (timer_mode == CLKNUM)*/
             set_custom_mask(0b00000000);
-            enable_custom_mask();
             increment_display();  //necessary, because in saving mode display is no more incremented
         }
     }
     
-    if ((input_diff & CHANGE_DIGIT) && (timer_mode == SETTING_MODE)) /* change currently edited digit */
+    if ((input_diff & CHANGE_DIGIT) && (clock_num < CLKNUM)) /* change currently edited digit */
         current_digit = (current_digit + 1) % 4;
 
-    if ((input_diff & INCR_DIGIT) && (timer_mode == SETTING_MODE)) /* increment digit */
-        rot_digit(current_digit);
+    if ((input_diff & INCR_DIGIT) && (clock_num < CLKNUM)) /* increment digit */
+        rot_digit(clock_num, current_digit);
 
 }
