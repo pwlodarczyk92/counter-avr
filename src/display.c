@@ -5,7 +5,7 @@
 static volatile uint16_t value_to_print = 1000;
 static volatile uint16_t current_digit  = 0;
 static volatile uint16_t current_value  = 0;
-static volatile uint8_t  digits[4]      = {0,0,0,0};
+static volatile uint8_t  digits[4]      = {0};
 static volatile uint8_t  zero_mask      = 0b00000000;
 static volatile uint8_t  custom_mask    = 0b00000000;
 static volatile uint8_t  custom_mask_on = 0b00000000;

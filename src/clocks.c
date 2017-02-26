@@ -3,7 +3,7 @@
 #include "clocks.h"
 
 volatile uint8_t  clock            = 0;
-volatile uint8_t  zeros[CLKNUM]    = {0};  // Cached logic values
+volatile uint8_t  zeros[CLKNUM]    = {1,1,1};  // Cached logic values
 volatile uint8_t  digits[4*CLKNUM] = {0};  // Displayed digits
 
 void static inline set_display_digits() {
